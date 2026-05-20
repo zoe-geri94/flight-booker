@@ -49,9 +49,36 @@ function formatDuration(mins: number) {
   return `${Math.floor(mins / 60)}h ${mins % 60}m`;
 }
 
-function FlightResultCard({ f, dark = false, index = 0 }: { f: Flight; dark?: boolean; index?: number }) {
+const AIRLINE_URLS: Record<string, (origin: string, dest: string, date: string) => string> = {
+  "delta":     (o, d, dt) => `https://www.delta.com/flight-search/book-a-flight#/results/oneway/${o}/${d}/${dt}/1/0/0/Coach`,
+  "united":    (o, d, dt) => `https://www.united.com/en/us/fsr/choose-flights?f=${o}&t=${d}&d=${dt}&tt=1&at=1&sc=7&px=1&taxng=1&newHP=True`,
+  "american":  (o, d, dt) => `https://www.aa.com/booking/find-flights?type=OneWay&cabin=E&passengers=1&origin=${o}&destination=${d}&departureDate=${dt}`,
+  "southwest": (o, d, dt) => `https://www.southwest.com/air/booking/select.html?originationAirportCode=${o}&destinationAirportCode=${d}&departureDate=${dt}&passengerCount=1`,
+  "jetblue":   (o, d, dt) => `https://www.jetblue.com/booking/flights?from=${o}&to=${d}&depart=${dt}&isMultiCity=false&noOfRoute=1&lang=en&adults=1&formSubmitted=false`,
+  "alaska":    (o, d, dt) => `https://www.alaskaair.com/booking/choose-flights/${o}/${d}/${dt}/1/0/0/F`,
+  "air france":(o, d, dt) => `https://www.airfrance.com/search/offers?pax=1:0:0:0:0:0:0:0&cabinClass=ECONOMY&trips=${o}:${d}:${dt}&encodedFeatures`,
+  "lufthansa": ()          => `https://www.lufthansa.com/us/en/homepage`,
+  "british airways": ()    => `https://www.britishairways.com/travel/home/public/en_us`,
+  "emirates":  ()          => `https://www.emirates.com/us/english/`,
+  "ana":       ()          => `https://www.ana.co.jp/en/us/`,
+  "jal":       ()          => `https://www.jal.com/en/`,
+};
+
+function getBookingUrl(airline: string, origin: string, dest: string, date: string): string {
+  const key = airline.toLowerCase();
+  const match = Object.keys(AIRLINE_URLS).find((k) => key.includes(k));
+  return match ? AIRLINE_URLS[match](origin, dest, date) : `https://www.google.com/travel/flights/search?tfs=CBwQAhoeEgoyMDI1LTA1LTI3agcIARIDJFNGT3IHCAESAyRKRks`;
+}
+
+function FlightResultCard({
+  f, dark = false, index = 0, origin = "", destination = "", date = "",
+}: {
+  f: Flight; dark?: boolean; index?: number; origin?: string; destination?: string; date?: string;
+}) {
   const badges = ["Best value", "Fastest", "Lowest fare", "Most direct", "Top rated", "Editor's pick"];
   const badge = badges[index % badges.length];
+  const bookingUrl = getBookingUrl(f.airline, origin, destination, date);
+
   return (
     <div className={`rounded-3xl p-4 ${dark ? "bg-white/10 text-white ring-1 ring-white/15" : "bg-white text-slate-900 shadow-sm ring-1 ring-black/5"}`}>
       <div className="mb-3 flex items-center justify-between">
@@ -61,14 +88,28 @@ function FlightResultCard({ f, dark = false, index = 0 }: { f: Flight; dark?: bo
         </div>
         <div className={`rounded-full px-3 py-1 text-xs font-medium ${dark ? "bg-white/15 text-white" : "bg-emerald-50 text-emerald-700"}`}>{badge}</div>
       </div>
-      <div className="flex items-end justify-between">
+      <div className="flex items-end justify-between gap-4">
         <div>
           <p className="font-medium">{f.departureTime} → {f.arrivalTime}</p>
           <p className={`text-sm ${dark ? "text-white/55" : "text-slate-500"}`}>{formatDuration(f.duration)}</p>
         </div>
-        <div className="text-right">
-          <p className="text-2xl font-bold">${f.price.toLocaleString()}</p>
-          <p className={`text-xs ${dark ? "text-white/55" : "text-slate-500"}`}>per person</p>
+        <div className="flex flex-col items-end gap-2">
+          <div className="text-right">
+            <p className="text-2xl font-bold">${f.price.toLocaleString()}</p>
+            <p className={`text-xs ${dark ? "text-white/55" : "text-slate-500"}`}>per person</p>
+          </div>
+          <a
+            href={bookingUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold transition-colors ${
+              dark
+                ? "bg-white text-slate-900 hover:bg-white/90"
+                : "bg-slate-900 text-white hover:bg-slate-700"
+            }`}
+          >
+            Book on {f.airline} <ArrowRight className="h-3.5 w-3.5" />
+          </a>
         </div>
       </div>
     </div>
@@ -347,7 +388,7 @@ export default function FlightBooker() {
                         className="space-y-3"
                       >
                         {flights.slice(0, 3).map((f, i) => (
-                          <FlightResultCard key={i} f={f} dark index={i} />
+                          <FlightResultCard key={i} f={f} dark index={i} origin={origin} destination={destination} date={date} />
                         ))}
                       </motion.div>
                     )}

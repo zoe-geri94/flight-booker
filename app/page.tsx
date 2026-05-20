@@ -1,6 +1,14 @@
 "use client";
 
 import { useState, useEffect, useRef, FormEvent } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Plane, Sparkles, CalendarDays, MapPin, SlidersHorizontal,
+  ShieldCheck, Clock3, ArrowRight, Bot, Luggage, Users, Star,
+  ChevronRight, WalletCards,
+} from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 interface Flight {
   airline: string;
@@ -14,40 +22,6 @@ interface Flight {
 }
 
 type StepStatus = "idle" | "running" | "done" | "error";
-
-interface WorkflowStep {
-  id: string;
-  label: string;
-  detail: string;
-  color: string;
-}
-
-const WORKFLOW_STEPS: WorkflowStep[] = [
-  {
-    id: "workflow",
-    label: "Vercel Workflow triggered",
-    detail: "Durable multi-step job started — survives crashes & deploys",
-    color: "blue",
-  },
-  {
-    id: "gateway",
-    label: "AI Gateway → Claude Haiku",
-    detail: "Routing model call through Vercel AI Gateway, generating flight options",
-    color: "purple",
-  },
-  {
-    id: "sandbox",
-    label: "Vercel Sandbox scoring flights",
-    detail: "Spinning up ephemeral Linux VM — running scoring algorithm in isolation",
-    color: "orange",
-  },
-  {
-    id: "function",
-    label: "Compute function returning results",
-    detail: "Serverless function packaging ranked flights back to the client",
-    color: "green",
-  },
-];
 
 const AIRPORTS = [
   { code: "SFO", name: "San Francisco" },
@@ -69,7 +43,56 @@ const AIRPORTS = [
 
 const STEP_DELAYS = [0, 1200, 3500, 6000];
 
-export default function Home() {
+const WORKFLOW_STEPS = [
+  { label: "Vercel Workflow triggered", detail: "Durable multi-step job started" },
+  { label: "AI Gateway → Claude Haiku", detail: "Generating flight options via model" },
+  { label: "Vercel Sandbox scoring", detail: "Ephemeral VM running ranking algorithm" },
+  { label: "Compute function returning results", detail: "Packaging ranked flights to client" },
+];
+
+function formatDuration(mins: number) {
+  return `${Math.floor(mins / 60)}h ${mins % 60}m`;
+}
+
+function FlightResultCard({ f, dark = false, index = 0 }: { f: Flight; dark?: boolean; index?: number }) {
+  const badges = ["Best value", "Fastest", "Lowest fare", "Most direct", "Top rated", "Editor's pick"];
+  const badge = badges[index % badges.length];
+  return (
+    <div className={`rounded-3xl p-4 ${dark ? "bg-white/10 text-white ring-1 ring-white/15" : "bg-white text-slate-900 shadow-sm ring-1 ring-black/5"}`}>
+      <div className="mb-3 flex items-center justify-between">
+        <div>
+          <p className={`text-sm ${dark ? "text-white/65" : "text-slate-500"}`}>{f.airline} · {f.flightNumber}</p>
+          <p className="text-lg font-semibold">{f.stops === 0 ? "Nonstop" : `${f.stops} stop`}</p>
+        </div>
+        <div className={`rounded-full px-3 py-1 text-xs font-medium ${dark ? "bg-white/15 text-white" : "bg-emerald-50 text-emerald-700"}`}>{badge}</div>
+      </div>
+      <div className="flex items-end justify-between">
+        <div>
+          <p className="font-medium">{f.departureTime} → {f.arrivalTime}</p>
+          <p className={`text-sm ${dark ? "text-white/55" : "text-slate-500"}`}>{formatDuration(f.duration)}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-2xl font-bold">${f.price.toLocaleString()}</p>
+          <p className={`text-xs ${dark ? "text-white/55" : "text-slate-500"}`}>per person</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SearchPill({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) {
+  return (
+    <div className="flex items-center gap-3 rounded-2xl bg-white/80 px-4 py-3 shadow-sm ring-1 ring-black/5 backdrop-blur">
+      <div className="rounded-xl bg-slate-100 p-2"><Icon className="h-4 w-4" /></div>
+      <div>
+        <p className="text-xs text-slate-500">{label}</p>
+        <p className="text-sm font-semibold text-slate-900">{value}</p>
+      </div>
+    </div>
+  );
+}
+
+export default function FlightBooker() {
   const [origin, setOrigin] = useState("SFO");
   const [destination, setDestination] = useState("JFK");
   const [date, setDate] = useState(() => {
@@ -84,30 +107,21 @@ export default function Home() {
   const [stepStatuses, setStepStatuses] = useState<StepStatus[]>(["idle", "idle", "idle", "idle"]);
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
-  function clearTimers() {
-    timersRef.current.forEach(clearTimeout);
-    timersRef.current = [];
-  }
-
+  function clearTimers() { timersRef.current.forEach(clearTimeout); timersRef.current = []; }
   useEffect(() => () => clearTimers(), []);
 
-  function setStep(index: number, status: StepStatus) {
-    setStepStatuses((prev) => {
-      const next = [...prev];
-      next[index] = status;
-      return next;
-    });
+  function setStep(i: number, s: StepStatus) {
+    setStepStatuses((prev) => { const n = [...prev]; n[i] = s; return n; });
   }
 
-  async function handleSearch(e: FormEvent) {
-    e.preventDefault();
+  async function handleSearch(e?: FormEvent) {
+    e?.preventDefault();
     clearTimers();
     setLoading(true);
     setError(null);
     setFlights(null);
     setStepStatuses(["idle", "idle", "idle", "idle"]);
 
-    // Animate steps on a timer while the real request is in flight
     STEP_DELAYS.forEach((delay, i) => {
       const t = setTimeout(() => {
         setStep(i, "running");
@@ -122,14 +136,11 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ origin, destination, date, passengers }),
       });
-
       clearTimers();
-
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error ?? "Search failed");
       }
-
       const data = await res.json();
       setStepStatuses(["done", "done", "done", "done"]);
       setFlights(data.flights);
@@ -142,231 +153,286 @@ export default function Home() {
     }
   }
 
-  function formatDuration(mins: number) {
-    const h = Math.floor(mins / 60);
-    const m = mins % 60;
-    return `${h}h ${m}m`;
-  }
-
-  const colorMap: Record<string, Record<string, string>> = {
-    blue:   { ring: "ring-blue-400",   bg: "bg-blue-50",   dot: "bg-blue-500",   text: "text-blue-700",   badge: "bg-blue-100 text-blue-700" },
-    purple: { ring: "ring-purple-400", bg: "bg-purple-50", dot: "bg-purple-500", text: "text-purple-700", badge: "bg-purple-100 text-purple-700" },
-    orange: { ring: "ring-orange-400", bg: "bg-orange-50", dot: "bg-orange-500", text: "text-orange-700", badge: "bg-orange-100 text-orange-700" },
-    green:  { ring: "ring-green-400",  bg: "bg-green-50",  dot: "bg-green-500",  text: "text-green-700",  badge: "bg-green-100 text-green-700" },
-  };
-
   const showPipeline = loading || stepStatuses.some((s) => s !== "idle");
+  const dateLabel = date ? new Date(date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Pick a date";
+  const originName = AIRPORTS.find((a) => a.code === origin)?.name ?? origin;
+  const destName = AIRPORTS.find((a) => a.code === destination)?.name ?? destination;
 
   return (
-    <main className="min-h-screen bg-gray-50 py-10 px-4">
-      <div className="max-w-3xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">✈️ Flight Booker</h1>
-        <p className="text-gray-500 mb-8 text-sm">
-          Powered by Vercel Workflows · AI Gateway · Sandbox · Compute
-        </p>
+    <main className="min-h-screen bg-slate-100 p-4 md:p-8">
+      <div className="mx-auto max-w-7xl space-y-8">
 
-        <form
-          onSubmit={handleSearch}
-          className="bg-white rounded-xl shadow p-6 mb-6 grid grid-cols-2 gap-4"
-        >
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">From</label>
-            <input
-              list="airports-from"
-              className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={origin}
-              onChange={(e) => setOrigin(e.target.value.toUpperCase())}
-              placeholder="e.g. SFO or LHR"
-              required
-            />
-            <datalist id="airports-from">
-              {AIRPORTS.map((a) => (
-                <option key={a.code} value={a.code}>{a.name}</option>
-              ))}
-            </datalist>
-          </div>
+        {/* Header */}
+        <div className="rounded-[2rem] bg-white p-6 shadow-sm">
+          <p className="text-sm font-medium text-slate-500">AI-native flight search</p>
+          <h1 className="mt-2 text-4xl font-semibold tracking-tight text-slate-950">Flight Booker</h1>
+          <p className="mt-2 text-slate-500 text-sm">Powered by Vercel Workflows · AI Gateway · Sandbox · Compute</p>
+        </div>
 
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">To</label>
-            <input
-              list="airports-to"
-              className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={destination}
-              onChange={(e) => setDestination(e.target.value.toUpperCase())}
-              placeholder="e.g. JFK or CDG"
-              required
-            />
-            <datalist id="airports-to">
-              {AIRPORTS.map((a) => (
-                <option key={a.code} value={a.code}>{a.name}</option>
-              ))}
-            </datalist>
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">Date</label>
-            <input
-              type="date"
-              className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              required
-            />
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">Passengers</label>
-            <select
-              className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={passengers}
-              onChange={(e) => setPassengers(Number(e.target.value))}
-            >
-              {[1, 2, 3, 4, 5].map((n) => (
-                <option key={n} value={n}>
-                  {n} passenger{n > 1 ? "s" : ""}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="col-span-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-semibold rounded-lg py-2.5 transition-colors cursor-pointer"
-          >
-            {loading ? "Searching…" : "Search Flights"}
-          </button>
-        </form>
-
-        {/* Workflow pipeline visualizer */}
-        {showPipeline && (
-          <div className="bg-white rounded-xl shadow p-5 mb-6">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">
-              What&apos;s happening behind the scenes
-            </p>
-            <div className="flex flex-col gap-3">
-              {WORKFLOW_STEPS.map((step, i) => {
-                const status = stepStatuses[i];
-                const c = colorMap[step.color];
-                return (
-                  <div
-                    key={step.id}
-                    className={`flex items-start gap-3 rounded-lg p-3 transition-all duration-500 ${
-                      status === "running" ? `${c.bg} ring-1 ${c.ring}` :
-                      status === "done"    ? "bg-gray-50" :
-                      status === "error"   ? "bg-red-50 ring-1 ring-red-300" :
-                      "opacity-40"
-                    }`}
-                  >
-                    {/* Status icon */}
-                    <div className="mt-0.5 flex-shrink-0 w-5 h-5 flex items-center justify-center">
-                      {status === "running" && (
-                        <svg className={`animate-spin w-4 h-4 ${c.text}`} viewBox="0 0 24 24" fill="none">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-                        </svg>
-                      )}
-                      {status === "done" && (
-                        <svg className="w-4 h-4 text-green-500" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414L8.414 15 3.293 9.879a1 1 0 011.414-1.414L8.414 12.172l6.879-6.879a1 1 0 011.414 0z" clipRule="evenodd"/>
-                        </svg>
-                      )}
-                      {status === "error" && (
-                        <svg className="w-4 h-4 text-red-500" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v4a1 1 0 102 0V7zm-1 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd"/>
-                        </svg>
-                      )}
-                      {status === "idle" && (
-                        <div className="w-3 h-3 rounded-full border-2 border-gray-300"/>
-                      )}
-                    </div>
-
-                    {/* Text */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`text-sm font-medium ${status === "idle" ? "text-gray-400" : "text-gray-800"}`}>
-                          {step.label}
-                        </span>
-                        {status === "running" && (
-                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${c.badge}`}>
-                            running
-                          </span>
-                        )}
-                        {status === "done" && (
-                          <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-green-100 text-green-700">
-                            done
-                          </span>
-                        )}
-                      </div>
-                      {status !== "idle" && (
-                        <p className="text-xs text-gray-500 mt-0.5">{step.detail}</p>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-4 mb-6 text-sm font-mono break-all">
-            {error}
-          </div>
-        )}
-
-        {flights && (
-          <div className="space-y-3">
-            <p className="text-sm text-gray-500">
-              {flights.length} flights found — ranked by value score
-            </p>
-            {flights.map((f, i) => (
-              <div
-                key={i}
-                className="bg-white rounded-xl shadow p-5 flex items-center justify-between hover:shadow-md transition-shadow"
-              >
-                <div className="flex flex-col gap-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold text-gray-900">{f.airline}</span>
-                    <span className="text-xs text-gray-400">{f.flightNumber}</span>
-                    {f.stops === 0 ? (
-                      <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Nonstop</span>
-                    ) : (
-                      <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">
-                        {f.stops} stop{f.stops > 1 ? "s" : ""}
-                      </span>
-                    )}
-                    {i === 0 && (
-                      <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">Best value</span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3 text-sm text-gray-600">
-                    <span className="font-medium">{f.departureTime}</span>
-                    <span className="text-gray-300">→</span>
-                    <span className="font-medium">{f.arrivalTime}</span>
-                    <span className="text-gray-400">·</span>
-                    <span>{formatDuration(f.duration)}</span>
-                  </div>
+        {/* Editorial — real search */}
+        <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }}>
+          <section className="rounded-[2rem] bg-[#f6f0e8] p-6 text-slate-950 shadow-xl">
+            <nav className="mb-8 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xl font-bold"><Plane className="h-6 w-6" /> Aerra</div>
+            </nav>
+            <div className="grid gap-8 md:grid-cols-[1.05fr_.95fr]">
+              {/* Left — search form */}
+              <div className="pt-4">
+                <div className="mb-5 inline-flex items-center gap-2 rounded-full bg-white/70 px-4 py-2 text-sm shadow-sm">
+                  <Sparkles className="h-4 w-4" /> AI flight planning
                 </div>
+                <h2 className="max-w-2xl text-4xl font-semibold leading-tight tracking-tight">
+                  Book the smarter route, not just the cheapest one.
+                </h2>
+                <p className="mt-4 max-w-xl text-base text-slate-600">
+                  Tell Aerra where you&apos;re going. It routes through Vercel Workflows, scores options via Sandbox, and calls Claude via AI Gateway.
+                </p>
 
-                <div className="flex flex-col items-end gap-1">
-                  <span className="text-2xl font-bold text-gray-900">
-                    ${(f.price * passengers).toLocaleString()}
-                  </span>
-                  {passengers > 1 && (
-                    <span className="text-xs text-gray-400">${f.price}/person</span>
+                {/* Search pills / inputs */}
+                <form onSubmit={handleSearch} className="mt-7 space-y-4">
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="flex flex-col gap-1 rounded-2xl bg-white/80 px-4 py-3 shadow-sm ring-1 ring-black/5">
+                      <div className="flex items-center gap-2">
+                        <div className="rounded-xl bg-slate-100 p-2"><MapPin className="h-4 w-4" /></div>
+                        <p className="text-xs text-slate-500">From</p>
+                      </div>
+                      <input
+                        list="airports-from"
+                        className="bg-transparent text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none mt-1"
+                        value={origin}
+                        onChange={(e) => setOrigin(e.target.value.toUpperCase())}
+                        placeholder="e.g. SFO or LHR"
+                        required
+                      />
+                      <datalist id="airports-from">
+                        {AIRPORTS.map((a) => <option key={a.code} value={a.code}>{a.name}</option>)}
+                      </datalist>
+                    </div>
+
+                    <div className="flex flex-col gap-1 rounded-2xl bg-white/80 px-4 py-3 shadow-sm ring-1 ring-black/5">
+                      <div className="flex items-center gap-2">
+                        <div className="rounded-xl bg-slate-100 p-2"><MapPin className="h-4 w-4" /></div>
+                        <p className="text-xs text-slate-500">To</p>
+                      </div>
+                      <input
+                        list="airports-to"
+                        className="bg-transparent text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none mt-1"
+                        value={destination}
+                        onChange={(e) => setDestination(e.target.value.toUpperCase())}
+                        placeholder="e.g. JFK or CDG"
+                        required
+                      />
+                      <datalist id="airports-to">
+                        {AIRPORTS.map((a) => <option key={a.code} value={a.code}>{a.name}</option>)}
+                      </datalist>
+                    </div>
+
+                    <div className="flex flex-col gap-1 rounded-2xl bg-white/80 px-4 py-3 shadow-sm ring-1 ring-black/5">
+                      <div className="flex items-center gap-2">
+                        <div className="rounded-xl bg-slate-100 p-2"><CalendarDays className="h-4 w-4" /></div>
+                        <p className="text-xs text-slate-500">Date</p>
+                      </div>
+                      <input
+                        type="date"
+                        className="bg-transparent text-sm font-semibold text-slate-900 focus:outline-none mt-1"
+                        value={date}
+                        onChange={(e) => setDate(e.target.value)}
+                        required
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1 rounded-2xl bg-white/80 px-4 py-3 shadow-sm ring-1 ring-black/5">
+                      <div className="flex items-center gap-2">
+                        <div className="rounded-xl bg-slate-100 p-2"><Users className="h-4 w-4" /></div>
+                        <p className="text-xs text-slate-500">Travelers</p>
+                      </div>
+                      <select
+                        className="bg-transparent text-sm font-semibold text-slate-900 focus:outline-none mt-1"
+                        value={passengers}
+                        onChange={(e) => setPassengers(Number(e.target.value))}
+                      >
+                        {[1,2,3,4,5].map((n) => <option key={n} value={n}>{n} adult{n > 1 ? "s" : ""}</option>)}
+                      </select>
+                    </div>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    disabled={loading}
+                    className="h-12 rounded-2xl bg-[#dc6d4f] px-7 text-base hover:bg-[#c95f44] disabled:opacity-60"
+                  >
+                    {loading ? "Searching…" : <>Ask agent to search <ArrowRight className="ml-2 h-4 w-4" /></>}
+                  </Button>
+                </form>
+              </div>
+
+              {/* Right — workflow pipeline + results */}
+              <div className="relative overflow-hidden rounded-[2rem] bg-slate-950 p-5 text-white">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(255,255,255,.22),transparent_35%),radial-gradient(circle_at_80%_30%,rgba(220,109,79,.45),transparent_35%)]" />
+                <div className="relative">
+                  <div className="mb-5 flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-white/60">Agent recommendation</p>
+                      <p className="text-2xl font-semibold">
+                        {flights ? `${origin} → ${destination}` : "Waiting for search…"}
+                      </p>
+                    </div>
+                    <Bot className="h-8 w-8" />
+                  </div>
+
+                  {/* Pipeline steps */}
+                  {showPipeline && (
+                    <div className="mb-4 space-y-2">
+                      {WORKFLOW_STEPS.map((step, i) => {
+                        const s = stepStatuses[i];
+                        return (
+                          <div key={step.label} className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm transition-all duration-500 ${
+                            s === "running" ? "bg-white/20 ring-1 ring-white/30" :
+                            s === "done"    ? "bg-white/10" :
+                            s === "error"   ? "bg-red-500/20 ring-1 ring-red-400/40" :
+                            "opacity-30 bg-white/5"
+                          }`}>
+                            <span className="flex-shrink-0 w-4">
+                              {s === "running" && (
+                                <svg className="animate-spin h-4 w-4 text-[#dc6d4f]" viewBox="0 0 24 24" fill="none">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                                </svg>
+                              )}
+                              {s === "done" && <svg className="h-4 w-4 text-emerald-400" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414L8.414 15 3.293 9.879a1 1 0 011.414-1.414L8.414 12.172l6.879-6.879a1 1 0 011.414 0z" clipRule="evenodd"/></svg>}
+                              {s === "error" && <span className="text-red-400">✕</span>}
+                              {s === "idle" && <div className="w-3 h-3 rounded-full border border-white/30 mx-auto"/>}
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-white/90 truncate">{step.label}</p>
+                              {s !== "idle" && <p className="text-xs text-white/50">{step.detail}</p>}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   )}
-                  {f.score !== undefined && (
-                    <span className="text-xs text-gray-400">Score: {f.score}</span>
+
+                  {/* Error */}
+                  {error && (
+                    <div className="mb-4 rounded-2xl bg-red-500/20 p-4 text-sm text-red-300 font-mono break-all ring-1 ring-red-400/30">
+                      {error}
+                    </div>
                   )}
-                  <button className="mt-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-1.5 rounded-lg transition-colors cursor-pointer">
-                    Select
-                  </button>
+
+                  {/* Results */}
+                  <AnimatePresence>
+                    {flights && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="space-y-3"
+                      >
+                        {flights.slice(0, 3).map((f, i) => (
+                          <FlightResultCard key={i} f={f} dark index={i} />
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {!showPipeline && !flights && (
+                    <div className="space-y-3 opacity-40 pointer-events-none">
+                      {[
+                        { airline: "—", flightNumber: "—", departureTime: "--:--", arrivalTime: "--:--", duration: 0, price: 0, stops: 0 },
+                        { airline: "—", flightNumber: "—", departureTime: "--:--", arrivalTime: "--:--", duration: 0, price: 0, stops: 0 },
+                      ].map((f, i) => (
+                        <div key={i} className="rounded-3xl bg-white/10 p-4 h-24 animate-pulse" />
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
-            ))}
-          </div>
-        )}
+            </div>
+          </section>
+        </motion.div>
+
+        {/* Command Center — static showcase */}
+        <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, delay: 0.1 }}>
+          <section className="rounded-[2rem] bg-slate-950 p-6 text-white shadow-xl">
+            <div className="mb-6 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xl font-bold"><Bot className="h-6 w-6" /> Atlas Agent <span className="text-sm font-normal text-white/40 ml-2">— design concept B</span></div>
+            </div>
+            <div className="grid gap-5 md:grid-cols-[.75fr_1.25fr]">
+              <Card className="rounded-[1.5rem] border-white/10 bg-white/10 text-white">
+                <CardContent className="p-5">
+                  <p className="mb-4 text-sm text-white/60">Trip brief</p>
+                  <div className="space-y-3">
+                    {["NYC to Tokyo", "Sep 5 – Sep 16", "Business class if under $3.2K", "Prefer Star Alliance"].map((x) => (
+                      <div className="rounded-2xl bg-white/10 p-3 text-sm" key={x}>{x}</div>
+                    ))}
+                  </div>
+                  <Button className="mt-5 w-full rounded-2xl bg-white text-slate-950 hover:bg-white/90">
+                    <SlidersHorizontal className="mr-2 h-4 w-4" /> Tune preferences
+                  </Button>
+                </CardContent>
+              </Card>
+              <div className="rounded-[1.5rem] bg-white p-5 text-slate-950">
+                <div className="mb-4 flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-slate-500">Ranked options</p>
+                    <h2 className="text-2xl font-semibold">Best flights found</h2>
+                  </div>
+                  <div className="rounded-full bg-emerald-50 px-3 py-1 text-sm text-emerald-700">12% below average</div>
+                </div>
+                <div className="space-y-3">
+                  {[
+                    { airline: "ANA", flightNumber: "NH009", departureTime: "11:00", arrivalTime: "14:30", duration: 810, price: 2980, stops: 0 },
+                    { airline: "JAL", flightNumber: "JL004", departureTime: "13:20", arrivalTime: "16:45", duration: 800, price: 3100, stops: 0 },
+                    { airline: "United", flightNumber: "UA837", departureTime: "10:00", arrivalTime: "15:20", duration: 840, price: 2750, stops: 1 },
+                  ].map((f, i) => <FlightResultCard key={i} f={f} index={i} />)}
+                </div>
+                <div className="mt-4 grid gap-3 md:grid-cols-3">
+                  <div className="rounded-2xl bg-slate-50 p-4"><ShieldCheck className="mb-2 h-5 w-5" /><p className="text-sm font-semibold">Protected fare</p><p className="text-xs text-slate-500">24h hold eligible</p></div>
+                  <div className="rounded-2xl bg-slate-50 p-4"><Clock3 className="mb-2 h-5 w-5" /><p className="text-sm font-semibold">Low delay risk</p><p className="text-xs text-slate-500">88% on-time</p></div>
+                  <div className="rounded-2xl bg-slate-50 p-4"><WalletCards className="mb-2 h-5 w-5" /><p className="text-sm font-semibold">Points optimized</p><p className="text-xs text-slate-500">+3,800 miles</p></div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </motion.div>
+
+        {/* Luxury — static showcase */}
+        <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, delay: 0.2 }}>
+          <section className="rounded-[2rem] bg-[#10100f] p-6 text-[#f8f0df] shadow-xl">
+            <div className="mb-10 flex items-center justify-between border-b border-white/10 pb-5">
+              <div className="text-2xl font-semibold tracking-wide">Maison Air <span className="text-sm font-normal text-white/30 ml-2">— design concept C</span></div>
+              <div className="hidden gap-6 text-sm text-white/50 md:flex"><span>Concierge</span><span>Itineraries</span><span>Membership</span></div>
+            </div>
+            <div className="grid gap-8 md:grid-cols-[1fr_.95fr]">
+              <div>
+                <p className="mb-4 flex items-center gap-2 text-sm uppercase tracking-[0.25em] text-[#bfa879]"><Star className="h-4 w-4" /> Private flight agent</p>
+                <h2 className="text-5xl font-serif leading-tight">A calmer way to book complicated travel.</h2>
+                <p className="mt-5 text-[#f8f0df]/60">Designed for multi-city trips, premium cabins, tight timing, and travelers who care about the full journey.</p>
+                <div className="mt-7 rounded-[1.5rem] border border-white/10 bg-white/5 p-4">
+                  <p className="text-sm text-[#f8f0df]/50">Agent note</p>
+                  <p className="mt-2 text-lg">&ldquo;I found a 45 minute later departure that saves $410 and avoids the risky Frankfurt connection.&rdquo;</p>
+                </div>
+                <Button className="mt-6 rounded-full bg-[#bfa879] px-6 text-slate-950 hover:bg-[#d4bd8d]">Review itinerary <ChevronRight className="ml-1 h-4 w-4" /></Button>
+              </div>
+              <div className="rounded-[2rem] border border-white/10 bg-[#1a1917] p-5">
+                <div className="mb-4 rounded-[1.5rem] bg-[#f8f0df] p-5 text-slate-950">
+                  <p className="text-sm text-slate-500">Recommended itinerary</p>
+                  <p className="mt-1 text-2xl font-semibold">NYC → Milan → Lake Como</p>
+                  <div className="mt-4 grid gap-3 text-sm">
+                    <div className="flex items-center justify-between rounded-2xl bg-slate-100 p-3"><span>Outbound</span><strong>Emirates · 8h 05m</strong></div>
+                    <div className="flex items-center justify-between rounded-2xl bg-slate-100 p-3"><span>Return</span><strong>ITA · 9h 15m</strong></div>
+                    <div className="flex items-center justify-between rounded-2xl bg-slate-100 p-3"><span>Bags</span><strong>Included</strong></div>
+                  </div>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="rounded-2xl bg-white/5 p-4"><Luggage className="mb-3 h-5 w-5" /><p className="font-semibold">Baggage checked</p><p className="text-sm text-white/45">No hidden fees</p></div>
+                  <div className="rounded-2xl bg-white/5 p-4"><Clock3 className="mb-3 h-5 w-5" /><p className="font-semibold">Arrival optimized</p><p className="text-sm text-white/45">Before dinner</p></div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </motion.div>
+
       </div>
     </main>
   );

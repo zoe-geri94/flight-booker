@@ -9,8 +9,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
-  const run = await start(flightSearchWorkflow, [body]);
-  const flights = await run.returnValue;
-
-  return NextResponse.json({ flights });
+  try {
+    const run = await start(flightSearchWorkflow, [body]);
+    const flights = await run.returnValue;
+    return NextResponse.json({ flights });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("Flight search error:", message);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, FormEvent } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plane, Sparkles, CalendarDays, MapPin, ArrowRight, Bot, Users } from "lucide-react";
+import { Plane, Sparkles, CalendarDays, MapPin, ArrowRight, Bot, Users, Clock3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface Flight {
@@ -96,6 +96,7 @@ export default function FlightBooker() {
     return d.toISOString().split("T")[0];
   });
   const [passengers, setPassengers] = useState(1);
+  const [timePreference, setTimePreference] = useState("any");
   const [flights, setFlights] = useState<Flight[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -129,7 +130,7 @@ export default function FlightBooker() {
       const res = await fetch("/api/search-flights", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ origin, destination, date, passengers }),
+        body: JSON.stringify({ origin, destination, date, passengers, timePreference }),
       });
       clearTimers();
       if (!res.ok) {
@@ -240,6 +241,36 @@ export default function FlightBooker() {
                       >
                         {[1,2,3,4,5].map((n) => <option key={n} value={n}>{n} adult{n > 1 ? "s" : ""}</option>)}
                       </select>
+                    </div>
+
+                    {/* Time preference — full width */}
+                    <div className="col-span-2 flex flex-col gap-2 rounded-2xl bg-white/80 px-4 py-3 shadow-sm ring-1 ring-black/5">
+                      <div className="flex items-center gap-2">
+                        <div className="rounded-xl bg-slate-100 p-2"><Clock3 className="h-4 w-4" /></div>
+                        <p className="text-xs text-slate-500">Departure time</p>
+                      </div>
+                      <div className="flex gap-2 flex-wrap mt-1">
+                        {[
+                          { value: "any",       label: "Any time" },
+                          { value: "morning",   label: "🌅 Morning",   sub: "5am – 12pm" },
+                          { value: "afternoon", label: "☀️ Afternoon", sub: "12pm – 6pm" },
+                          { value: "evening",   label: "🌙 Evening",   sub: "6pm – 12am" },
+                        ].map((opt) => (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => setTimePreference(opt.value)}
+                            className={`rounded-xl px-3 py-1.5 text-sm font-medium transition-colors cursor-pointer ${
+                              timePreference === opt.value
+                                ? "bg-slate-900 text-white"
+                                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                            }`}
+                          >
+                            {opt.label}
+                            {opt.sub && <span className="ml-1 text-xs opacity-60">{opt.sub}</span>}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
 

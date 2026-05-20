@@ -171,34 +171,36 @@ export default function Home() {
         >
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-gray-700">From</label>
-            <select
+            <input
+              list="airports-from"
               className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={origin}
-              onChange={(e) => setOrigin(e.target.value)}
+              onChange={(e) => setOrigin(e.target.value.toUpperCase())}
+              placeholder="e.g. SFO or LHR"
               required
-            >
+            />
+            <datalist id="airports-from">
               {AIRPORTS.map((a) => (
-                <option key={a.code} value={a.code}>
-                  {a.code} — {a.name}
-                </option>
+                <option key={a.code} value={a.code}>{a.name}</option>
               ))}
-            </select>
+            </datalist>
           </div>
 
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-gray-700">To</label>
-            <select
+            <input
+              list="airports-to"
               className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={destination}
-              onChange={(e) => setDestination(e.target.value)}
+              onChange={(e) => setDestination(e.target.value.toUpperCase())}
+              placeholder="e.g. JFK or CDG"
               required
-            >
+            />
+            <datalist id="airports-to">
               {AIRPORTS.map((a) => (
-                <option key={a.code} value={a.code}>
-                  {a.code} — {a.name}
-                </option>
+                <option key={a.code} value={a.code}>{a.name}</option>
               ))}
-            </select>
+            </datalist>
           </div>
 
           <div className="flex flex-col gap-1">

@@ -2,12 +2,7 @@
 
 import { useState, useEffect, useRef, FormEvent } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Plane, Sparkles, CalendarDays, MapPin, SlidersHorizontal,
-  ShieldCheck, Clock3, ArrowRight, Bot, Luggage, Users, Star,
-  ChevronRight, WalletCards,
-} from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Plane, Sparkles, CalendarDays, MapPin, ArrowRight, Bot, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface Flight {
@@ -162,14 +157,6 @@ export default function FlightBooker() {
     <main className="min-h-screen bg-slate-100 p-4 md:p-8">
       <div className="mx-auto max-w-7xl space-y-8">
 
-        {/* Header */}
-        <div className="rounded-[2rem] bg-white p-6 shadow-sm">
-          <p className="text-sm font-medium text-slate-500">AI-native flight search</p>
-          <h1 className="mt-2 text-4xl font-semibold tracking-tight text-slate-950">Flight Booker</h1>
-          <p className="mt-2 text-slate-500 text-sm">Powered by Vercel Workflows · AI Gateway · Sandbox · Compute</p>
-        </div>
-
-        {/* Editorial — real search */}
         <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }}>
           <section className="rounded-[2rem] bg-[#f6f0e8] p-6 text-slate-950 shadow-xl">
             <nav className="mb-8 flex items-center justify-between">
@@ -351,87 +338,6 @@ export default function FlightBooker() {
           </section>
         </motion.div>
 
-        {/* Command Center — static showcase */}
-        <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, delay: 0.1 }}>
-          <section className="rounded-[2rem] bg-slate-950 p-6 text-white shadow-xl">
-            <div className="mb-6 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xl font-bold"><Bot className="h-6 w-6" /> Atlas Agent <span className="text-sm font-normal text-white/40 ml-2">— design concept B</span></div>
-            </div>
-            <div className="grid gap-5 md:grid-cols-[.75fr_1.25fr]">
-              <Card className="rounded-[1.5rem] border-white/10 bg-white/10 text-white">
-                <CardContent className="p-5">
-                  <p className="mb-4 text-sm text-white/60">Trip brief</p>
-                  <div className="space-y-3">
-                    {["NYC to Tokyo", "Sep 5 – Sep 16", "Business class if under $3.2K", "Prefer Star Alliance"].map((x) => (
-                      <div className="rounded-2xl bg-white/10 p-3 text-sm" key={x}>{x}</div>
-                    ))}
-                  </div>
-                  <Button className="mt-5 w-full rounded-2xl bg-white text-slate-950 hover:bg-white/90">
-                    <SlidersHorizontal className="mr-2 h-4 w-4" /> Tune preferences
-                  </Button>
-                </CardContent>
-              </Card>
-              <div className="rounded-[1.5rem] bg-white p-5 text-slate-950">
-                <div className="mb-4 flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-slate-500">Ranked options</p>
-                    <h2 className="text-2xl font-semibold">Best flights found</h2>
-                  </div>
-                  <div className="rounded-full bg-emerald-50 px-3 py-1 text-sm text-emerald-700">12% below average</div>
-                </div>
-                <div className="space-y-3">
-                  {[
-                    { airline: "ANA", flightNumber: "NH009", departureTime: "11:00", arrivalTime: "14:30", duration: 810, price: 2980, stops: 0 },
-                    { airline: "JAL", flightNumber: "JL004", departureTime: "13:20", arrivalTime: "16:45", duration: 800, price: 3100, stops: 0 },
-                    { airline: "United", flightNumber: "UA837", departureTime: "10:00", arrivalTime: "15:20", duration: 840, price: 2750, stops: 1 },
-                  ].map((f, i) => <FlightResultCard key={i} f={f} index={i} />)}
-                </div>
-                <div className="mt-4 grid gap-3 md:grid-cols-3">
-                  <div className="rounded-2xl bg-slate-50 p-4"><ShieldCheck className="mb-2 h-5 w-5" /><p className="text-sm font-semibold">Protected fare</p><p className="text-xs text-slate-500">24h hold eligible</p></div>
-                  <div className="rounded-2xl bg-slate-50 p-4"><Clock3 className="mb-2 h-5 w-5" /><p className="text-sm font-semibold">Low delay risk</p><p className="text-xs text-slate-500">88% on-time</p></div>
-                  <div className="rounded-2xl bg-slate-50 p-4"><WalletCards className="mb-2 h-5 w-5" /><p className="text-sm font-semibold">Points optimized</p><p className="text-xs text-slate-500">+3,800 miles</p></div>
-                </div>
-              </div>
-            </div>
-          </section>
-        </motion.div>
-
-        {/* Luxury — static showcase */}
-        <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, delay: 0.2 }}>
-          <section className="rounded-[2rem] bg-[#10100f] p-6 text-[#f8f0df] shadow-xl">
-            <div className="mb-10 flex items-center justify-between border-b border-white/10 pb-5">
-              <div className="text-2xl font-semibold tracking-wide">Maison Air <span className="text-sm font-normal text-white/30 ml-2">— design concept C</span></div>
-              <div className="hidden gap-6 text-sm text-white/50 md:flex"><span>Concierge</span><span>Itineraries</span><span>Membership</span></div>
-            </div>
-            <div className="grid gap-8 md:grid-cols-[1fr_.95fr]">
-              <div>
-                <p className="mb-4 flex items-center gap-2 text-sm uppercase tracking-[0.25em] text-[#bfa879]"><Star className="h-4 w-4" /> Private flight agent</p>
-                <h2 className="text-5xl font-serif leading-tight">A calmer way to book complicated travel.</h2>
-                <p className="mt-5 text-[#f8f0df]/60">Designed for multi-city trips, premium cabins, tight timing, and travelers who care about the full journey.</p>
-                <div className="mt-7 rounded-[1.5rem] border border-white/10 bg-white/5 p-4">
-                  <p className="text-sm text-[#f8f0df]/50">Agent note</p>
-                  <p className="mt-2 text-lg">&ldquo;I found a 45 minute later departure that saves $410 and avoids the risky Frankfurt connection.&rdquo;</p>
-                </div>
-                <Button className="mt-6 rounded-full bg-[#bfa879] px-6 text-slate-950 hover:bg-[#d4bd8d]">Review itinerary <ChevronRight className="ml-1 h-4 w-4" /></Button>
-              </div>
-              <div className="rounded-[2rem] border border-white/10 bg-[#1a1917] p-5">
-                <div className="mb-4 rounded-[1.5rem] bg-[#f8f0df] p-5 text-slate-950">
-                  <p className="text-sm text-slate-500">Recommended itinerary</p>
-                  <p className="mt-1 text-2xl font-semibold">NYC → Milan → Lake Como</p>
-                  <div className="mt-4 grid gap-3 text-sm">
-                    <div className="flex items-center justify-between rounded-2xl bg-slate-100 p-3"><span>Outbound</span><strong>Emirates · 8h 05m</strong></div>
-                    <div className="flex items-center justify-between rounded-2xl bg-slate-100 p-3"><span>Return</span><strong>ITA · 9h 15m</strong></div>
-                    <div className="flex items-center justify-between rounded-2xl bg-slate-100 p-3"><span>Bags</span><strong>Included</strong></div>
-                  </div>
-                </div>
-                <div className="grid gap-3 md:grid-cols-2">
-                  <div className="rounded-2xl bg-white/5 p-4"><Luggage className="mb-3 h-5 w-5" /><p className="font-semibold">Baggage checked</p><p className="text-sm text-white/45">No hidden fees</p></div>
-                  <div className="rounded-2xl bg-white/5 p-4"><Clock3 className="mb-3 h-5 w-5" /><p className="font-semibold">Arrival optimized</p><p className="text-sm text-white/45">Before dinner</p></div>
-                </div>
-              </div>
-            </div>
-          </section>
-        </motion.div>
 
       </div>
     </main>
